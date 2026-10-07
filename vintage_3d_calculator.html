@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Vintage Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #121218;
+            /* Retro grid background */
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Inter', sans-serif;
+            perspective: 2000px;
+        }
+
+        .scene {
+            position: relative;
+            transform-style: preserve-3d;
+            /* Default scale, will be adjusted by JS for responsiveness */
+            transition: transform 0.2s;
+        }
+
+        .calculator {
+            width: 320px;
+            height: 520px;
+            background: #222;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjMjIyIj48L3JlY3Q+CjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiMzMzMiPjwvcmVjdD4KPC9zdmc+'); /* Subtle texture */
+            border-radius: 20px;
+            padding: 30px 25px;
+            display: flex;
+            flex-direction: column;
+            transform-style: preserve-3d;
+            /* The Magic Isometric Transform */
+            transform: rotateX(55deg) rotateZ(-40deg) translateZ(0px);
+            
+            /* Creating the thick 3D body using stacked box-shadows */
+            box-shadow: 
+                -1px 1px 0 #1a1a1a,
+                -2px 2px 0 #1a1a1a,
+                -3px 3px 0 #1a1a1a,
+                -4px 4px 0 #151515,
+                -5px 5px 0 #151515,
+                -6px 6px 0 #151515,
+                -7px 7px 0 #111,
+                -8px 8px 0 #111,
+                -9px 9px 0 #111,
+                -10px 10px 0 #0a0a0a,
+                -11px 11px 0 #0a0a0a,
+                -12px 12px 0 #0a0a0a,
+                -13px 13px 0 #050505,
+                -14px 14px 0 #050505,
+                -15px 15px 0 #000,
+                -25px 25px 30px rgba(0,0,0,0.9);
+            
+            border: 1px solid #3a3a3a;
+        }
+
+        .brand-name {
+            font-family: 'Orbitron', sans-serif;
+            color: #888;
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-align: right;
+            margin-bottom: 15px;
+            transform: translateZ(2px);
+            text-shadow: -1px 1px 0 rgba(0,0,0,0.5);
+        }
+
+        .display-container {
+            background: #0d0d0d;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 30px;
+            transform: translateZ(5px);
+            box-shadow: 
+                inset 2px -2px 5px rgba(0,0,0,0.8),
+                inset -2px 2px 5px rgba(255,255,255,0.05),
+                -1px 1px 0 #333;
+            border: 2px solid #111;
+        }
+
+        .display {
+            font-family: 'VT323', monospace;
+            background: #1a0000;
+            color: #ff2a2a;
+            font-size: 48px;
+            text-align: right;
+            padding: 10px 15px;
+            border-radius: 5px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            overflow: hidden;
+            /* Glowing LED effect */
+            text-shadow: 0 0 5px #ff2a2a, 0 0 15px #ff0000;
+            box-shadow: inset 0 0 20px rgba(255,0,0,0.1);
+            letter-spacing: 2px;
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            transform-style: preserve-3d;
+            flex-grow: 1;
+        }
+
+        /* Button Colors Config */
+        :root {
+            --num-bg: #d4d4d4;
+            --num-shadow: #888;
+            --num-text: #222;
+
+            --op-bg: #3b82f6;
+            --op-shadow: #1d4ed8;
+            --op-text: #fff;
+
+            --clear-bg: #ef4444;
+            --clear-shadow: #b91c1c;
+            --clear-text: #fff;
+
+            --eq-bg: #f59e0b;
+            --eq-shadow: #b45309;
+            --eq-text: #fff;
+        }
+
+        .calc-btn {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 50px;
+            border-radius: 8px;
+            transform-style: preserve-3d;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .btn-inner {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 22px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            /* Base elevation */
+            transform: translateZ(10px);
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            background: var(--bg-color);
+            color: var(--txt-color);
+            border: 1px solid rgba(255,255,255,0.2);
+            
+            /* The 3D thickness of the button */
+            box-shadow: 
+                -1px 1px 0 var(--shadow-color),
+                -2px 2px 0 var(--shadow-color),
+                -3px 3px 0 var(--shadow-color),
+                -4px 4px 0 var(--shadow-color),
+                -5px 5px 0 var(--shadow-color),
+                -6px 6px 0 var(--shadow-color),
+                -8px 8px 10px rgba(0,0,0,0.6);
+        }
+
+        /* Hover effect */
+        .calc-btn:hover .btn-inner {
+            filter: brightness(1.1);
+        }
+
+        /* Active / Pressed state */
+        .calc-btn:active .btn-inner, 
+        .calc-btn.pressed .btn-inner {
+            /* Pushing down in Z space, and translating X/Y to follow the shadow angle */
+            transform: translateZ(2px) translate(-4px, 4px);
+            box-shadow: 
+                -1px 1px 0 var(--shadow-color),
+                -2px 2px 0 var(--shadow-color),
+                -3px 3px 5px rgba(0,0,0,0.6);
+        }
+
+        /* Color classes */
+        .btn-num { --bg-color: var(--num-bg); --shadow-color: var(--num-shadow); --txt-color: var(--num-text); }
+        .btn-op { --bg-color: var(--op-bg); --shadow-color: var(--op-shadow); --txt-color: var(--op-text); }
+        .btn-clear { --bg-color: var(--clear-bg); --shadow-color: var(--clear-shadow); --txt-color: var(--clear-text); }
+        .btn-eq { --bg-color: var(--eq-bg); --shadow-color: var(--eq-shadow); --txt-color: var(--eq-text); }
+
+        /* Double width for zero button */
+        .calc-btn.zero {
+            grid-column: span 2;
+        }
+        
+        /* Layout instructions helper */
+        .instructions {
+            position: absolute;
+            bottom: 30px;
+            color: rgba(0, 255, 255, 0.6);
+            font-family: monospace;
+            text-align: center;
+            width: 100%;
+            pointer-events: none;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scene" id="scene">
+        <div class="calculator">
+            <div class="brand-name">VINTAGE-35 3D</div>
+            
+            <div class="display-container">
+                <div class="display" id="display">0</div>
+            </div>
+
+            <div class="keypad">
+                <!-- Row 1 -->
+                <div class="calc-btn btn-clear" data-action="clear" data-key="Escape"><div class="btn-inner">C</div></div>
+                <div class="calc-btn btn-op" data-action="negate"><div class="btn-inner">+/-</div></div>
+                <div class="calc-btn btn-op" data-action="percent" data-key="%"><div class="btn-inner">%</div></div>
+                <div class="calc-btn btn-op" data-action="operator" data-val="/" data-key="/"><div class="btn-inner">÷</div></div>
+
+                <!-- Row 2 -->
+                <div class="calc-btn btn-num" data-action="number" data-val="7" data-key="7"><div class="btn-inner">7</div></div>
+                <div class="calc-btn btn-num" data-action="number" data-val="8" data-key="8"><div class="btn-inner">8</div></div>
+                <div class="calc-btn btn-num" data-action="number" data-val="9" data-key="9"><div class="btn-inner">9</div></div>
+                <div class="calc-btn btn-op" data-action="operator" data-val="*" data-key="*"><div class="btn-inner">×</div></div>
+
+                <!-- Row 3 -->
+                <div class="calc-btn btn-num" data-action="number" data-val="4" data-key="4"><div class="btn-inner">4</div></div>
+                <div class="calc-btn btn-num" data-action="number" data-val="5" data-key="5"><div class="btn-inner">5</div></div>
+                <div class="calc-btn btn-num" data-action="number" data-val="6" data-key="6"><div class="btn-inner">6</div></div>
+                <div class="calc-btn btn-op" data-action="operator" data-val="-" data-key="-"><div class="btn-inner">−</div></div>
+
+                <!-- Row 4 -->
+                <div class="calc-btn btn-num" data-action="number" data-val="1" data-key="1"><div class="btn-inner">1</div></div>
+                <div class="calc-btn btn-num" data-action="number" data-val="2" data-key="2"><div class="btn-inner">2</div></div>
+                <div class="calc-btn btn-num" data-action="number" data-val="3" data-key="3"><div class="btn-inner">3</div></div>
+                <div class="calc-btn btn-op" data-action="operator" data-val="+" data-key="+"><div class="btn-inner">+</div></div>
+
+                <!-- Row 5 -->
+                <div class="calc-btn btn-num zero" data-action="number" data-val="0" data-key="0"><div class="btn-inner">0</div></div>
+                <div class="calc-btn btn-num" data-action="decimal" data-val="." data-key="."><div class="btn-inner">.</div></div>
+                <div class="calc-btn btn-eq" data-action="calculate" data-key="Enter"><div class="btn-inner">=</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        You can use your keyboard or click the 3D buttons!<br>
+        (Resize window to see responsive 3D scaling)
+    </div>
+
+    <script>
+        const display = document.getElementById('display');
+        let currentInput = '0';
+        let previousInput = null;
+        let operator = null;
+        let waitingForSecondOperand = false;
+        
+        // Audio context for authentic beep (optional, kept simple)
+        const playClick = () => {
+            // Sound disabled by default to avoid browser block, but logic is here if needed.
+        };
+
+        function updateDisplay() {
+            // Truncate to fit the vintage LED screen
+            if (currentInput.length > 11) {
+                if(currentInput.includes('.')) {
+                    display.innerText = parseFloat(currentInput).toPrecision(8).replace(/(?:\.0+|(\.\d+?)0+)$/, "$1");
+                } else {
+                    display.innerText = "ERROR";
+                    currentInput = '0';
+                    return;
+                }
+            } else {
+                display.innerText = currentInput;
+            }
+        }
+
+        function inputNumber(num) {
+            if (waitingForSecondOperand) {
+                currentInput = num;
+                waitingForSecondOperand = false;
+            } else {
+                currentInput = currentInput === '0' ? num : currentInput + num;
+            }
+            updateDisplay();
+        }
+
+        function inputDecimal() {
+            if (waitingForSecondOperand) {
+                currentInput = '0.';
+                waitingForSecondOperand = false;
+                return updateDisplay();
+            }
+            if (!currentInput.includes('.')) {
+                currentInput += '.';
+            }
+            updateDisplay();
+        }
+
+        function handleOperator(nextOperator) {
+            const inputValue = parseFloat(currentInput);
+
+            if (operator && waitingForSecondOperand) {
+                operator = nextOperator;
+                return;
+            }
+
+            if (previousInput == null && !isNaN(inputValue)) {
+                previousInput = inputValue;
+            } else if (operator) {
+                const result = calculate(previousInput, inputValue, operator);
+                currentInput = String(result);
+                previousInput = result;
+                updateDisplay();
+            }
+
+            operator = nextOperator;
+            waitingForSecondOperand = true;
+        }
+
+        function calculate(first, second, op) {
+            if (op === '+') return first + second;
+            if (op === '-') return first - second;
+            if (op === '*') return first * second;
+            if (op === '/') {
+                if (second === 0) return 'ERROR';
+                return first / second;
+            }
+            return second;
+        }
+
+        function resetCalculator() {
+            currentInput = '0';
+            previousInput = null;
+            operator = null;
+            waitingForSecondOperand = false;
+            updateDisplay();
+        }
+
+        const buttons = document.querySelectorAll('.calc-btn');
+
+        buttons.forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.classList.add('pressed');
+            });
+            
+            button.addEventListener('mouseup', () => {
+                button.classList.remove('pressed');
+            });
+            
+            button.addEventListener('mouseleave', () => {
+                button.classList.remove('pressed');
+            });
+
+            // Touch support for mobile
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // prevent mouse emulation
+                button.classList.add('pressed');
+                triggerAction(button);
+            });
+            
+            button.addEventListener('touchend', () => {
+                button.classList.remove('pressed');
+            });
+
+            button.addEventListener('click', () => {
+                triggerAction(button);
+            });
+        });
+
+        function triggerAction(button) {
+            const action = button.dataset.action;
+            const val = button.dataset.val;
+
+            switch(action) {
+                case 'number':
+                    inputNumber(val);
+                    break;
+                case 'operator':
+                    handleOperator(val);
+                    break;
+                case 'decimal':
+                    inputDecimal();
+                    break;
+                case 'clear':
+                    resetCalculator();
+                    break;
+                case 'calculate':
+                    handleOperator(operator);
+                    operator = null;
+                    break;
+                case 'negate':
+                    currentInput = String(parseFloat(currentInput) * -1);
+                    updateDisplay();
+                    break;
+                case 'percent':
+                    currentInput = String(parseFloat(currentInput) / 100);
+                    updateDisplay();
+                    break;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            let key = e.key;
+            if (key === 'Enter') key = '='; // Map Enter to equals visually if needed, though data-key handles Enter
+            
+            const btn = document.querySelector(`.calc-btn[data-key="${e.key}"]`) || 
+                        document.querySelector(`.calc-btn[data-val="${e.key}"]`) ||
+                        (e.key === '=' && document.querySelector('.calc-btn-eq'));
+
+            if (btn) {
+                btn.classList.add('pressed');
+                triggerAction(btn);
+                setTimeout(() => btn.classList.remove('pressed'), 150);
+            }
+        });
+
+        // Ensure the 3D scene scales down properly on smaller screens while maintaining perspective
+        function handleResize() {
+            const scene = document.getElementById('scene');
+            // Calculate scale based on container height/width vs calculator height/width
+            const scaleX = window.innerWidth / 400;
+            const scaleY = window.innerHeight / 700;
+            const scale = Math.min(scaleX, scaleY, 1.2); // Cap max scale at 1.2
+            
+            scene.style.transform = `scale(${scale})`;
+        }
+
+        window.addEventListener('resize', handleResize);
+        handleResize(); // Init scale
+
+    </script>
+</body>
+</html>
